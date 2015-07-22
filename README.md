@@ -6,6 +6,7 @@ The developed algorithms must satisfy the following criteria:
 - they can be coded in Python or C++
 - they must read a nifti image as input image (.nii or .nii.gz): "-i" (input file name) option
 - they have to output a binary image with the same format and orientation as input image, containing the location or the centerline of the spinal cord: "-o" (output file name) option
+- they must have a verbose option '-v' that display some useful information during the process. By default, this option is disabled.
 - they have to be **fast**
 
 To validate a new algorithm, it must go through the validation pipeline using the following command:
