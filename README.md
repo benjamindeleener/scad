@@ -10,10 +10,10 @@ The developed algorithms must satisfy the following criteria:
 
 To validate a new algorithm, it must go through the validation pipeline using the following command:
 ```
-scad_validation.py "algo_name"
+scad_validation.py <algorithm_name>
 ```
 
-The validation pipeline tests your algorithm throughout a testing dataset, containing many images of the spinal cord with various contrasts and fields of view, along with their manual segmentation.
+The validation pipeline tests your algorithm throughout a testing dataset, containing many images of the spinal cord with various contrasts, resolution and fields of view, along with their manual segmentation.
 It tests several criteria:
 
 1. if your detection is inside the spinal cord
