@@ -57,7 +57,7 @@ class Vesselness:
         pretreated.file_name = fname
 
         nx, ny, nz, nt, px, py, pz, pt = sct.get_dimension(pretreated.file_name)
-        sc_size = 5  # in mm
+        sc_size = 3  # in mm
         sc_npix = ((sc_size/px) + (sc_size/py))/2.0
         pretreated.data = scp_filters.gaussian_filter(pretreated.data, sigma=sc_npix)
         pretreated.file_name = pretreated.file_name + '_gaussian'
@@ -131,7 +131,7 @@ def hessian(im_data):
     return hess  # im_hess
 
 
-def line_filter(lambda1, lambda2, lambda3, alpha1=0.5,  alpha2=0.5, alpha3=0.5):
+def line_filter(lambda1, lambda2, lambda3, alpha1=0.1,  alpha2=1.0, alpha3=5.0):
     """
     detect a bright tubular structure
     eq 1 from http://www.spl.harvard.edu/archive/spl-pre2007/pages/papers/yoshi/node3.html#SECTION00021000000000000000
