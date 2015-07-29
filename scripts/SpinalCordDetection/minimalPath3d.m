@@ -47,7 +47,7 @@ for row=2:p
     VI(:,:,4:5)=VI(:,:,4:5).*factx; VIm(:,:,4:5)=VIm(:,:,4:5).*factx;
     Jq=cat(3,pJ(vectx-1,vecty),pJ(vectx,vecty-1),pJ(vectx,vecty),pJ(vectx,vecty+1),pJ(vectx+1,vecty));
     if homogeneousmod
-        J1(2:end-1,2:end-1,row)=min(Jq+abs(VI-VIm)./min(VI,VIm),[],3);
+        J1(2:end-1,2:end-1,row)=min(Jq+abs(VI-VIm)./min(VI,VIm).^2,[],3);
     else
         J1(2:end-1,2:end-1,row)=min(Jq+VI,[],3);
     end
@@ -69,7 +69,7 @@ for row=p-1:-1:1
     VI(:,:,4:5)=VI(:,:,4:5).*factx; VIm(:,:,4:5)=VIm(:,:,4:5).*factx;
     Jq=cat(3,pJ(vectx-1,vecty),pJ(vectx,vecty-1),pJ(vectx,vecty),pJ(vectx,vecty+1),pJ(vectx+1,vecty));
     if homogeneousmod
-        J2(2:end-1,2:end-1,row)=min(Jq+abs(VI-VIm)./min(VI,VIm),[],3);
+        J2(2:end-1,2:end-1,row)=min(Jq+abs(VI-VIm)./min(VI,VIm).^2,[],3);
     else
         J2(2:end-1,2:end-1,row)=min(Jq+VI,[],3);
     end
