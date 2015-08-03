@@ -94,17 +94,23 @@ class SCAD(Algorithm):
         # SymmetryDetector
         sct.run(matlab_run + ' "scad_symetry(\'raw.nii\'); exit"')
         # minimal path
-        sct.run(matlab_run + ' "scad_minimalpath_homo(\'raw.nii\'); exit"')
+        #sct.run(matlab_run + ' "scad_minimalpath_homo(\'raw.nii\'); exit"')
         # vesselness filter
         sct.run('sct_vesselness -i raw.nii -t ' + self._contrast)
         # minimal path on vesselness filter
         sct.run(matlab_run + ' "scad_minimalpath(\'imageVesselNessFilter.nii.gz\'); exit"')
         # multiply results
-        sct.run('fslmaths imageVesselNessFilter_minimalpath.nii -mul raw_minimalpath.nii.gz -mul raw_symetry.nii.gz spine_detection.nii.gz')
-        sct.run(matlab_run + ' "scad_minimalpath(\'spine_detection.nii.gz\'); exit"')
+        sct.run('fslmaths imageVesselNessFilter_minimalpath.nii -mul raw_symetry.nii.gz spine_detection.nii.gz')
 
         # get centerline
         sct.run(matlab_run + ' "scad_proba2centerline(\'spine_detection.nii.gz\'); exit"')
+
+        # copy back centerline
+        os.chdir('../')
+        sct.tmp_copy_nifti('centerline.nii.gz',self.input_image.path,self.input_image.file_name+'_centerline'+self.input_image.ext)
+
+        # delete tmp
+        os.removedirs(path_tmp)
         # symDetector = SymmetryDetector(self.contrast, self.verbose)
         # symDetector.execute()
         # SymmetryDetector()

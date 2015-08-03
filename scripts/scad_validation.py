@@ -46,7 +46,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
 
     # creating a new folder with the experiment
     path_experiment = 'scad-experiment.'+algorithm+'.'+time.strftime("%y%m%d%H%M%S")
-    status, output = sct.run('mkdir '+path_experiment, verbose)
+    #status, output = sct.run('mkdir '+path_experiment, verbose)
 
     # copying images from "data" folder into experiment folder
     sct.copyDirectory('data', path_experiment)
@@ -54,7 +54,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
     # Starting validation
     os.chdir(path_experiment)
     # t1
-    os.chdir('data/t1/')
+    os.chdir('t1/')
     for subject_dir in os.listdir('./'):
         if os.path.isdir(subject_dir):
             os.chdir(subject_dir)
@@ -64,7 +64,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
             for file_name in os.listdir('./'):
                 if not 'manual_segmentation' in file_name:
                     for file_name_corr in os.listdir('./'):
-                        if 'manual_segmentation' in file_name_corr and file_name in file_name_corr:
+                        if 'manual_segmentation' in file_name_corr and sct.extract_fname(file_name)[1] in file_name_corr:
                             list_images[file_name] = file_name_corr
 
             # running the proposed algorithm on images in the folder and analyzing the results
@@ -73,14 +73,14 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                 image_output = file_in+'_centerline'+ext_in
                 if ispython:
                     try:
-                        eval(algorithm+'('+image+', '+image_output+', verbose='+str(verbose)+')')
+                        eval(algorithm+'('+image+', t1, verbose='+str(verbose)+')')
                     except Exception as e:
                         print 'Error during spinal cord detection on line {}:'.format(sys.exc_info()[-1].tb_lineno)
                         print 'Subject: t1/'+subject_dir+'/'+image
                         print e
                         sys.exit(2)
                 else:
-                    cmd = algorithm+' -i '+image+' -o '+image_output
+                    cmd = algorithm+' -i '+image+' -t t1'
                     if verbose:
                         cmd += ' -v'
                     status, output = sct.run(cmd, verbose=verbose)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     algorithm = script_arguments[0]
     verbose = True
-    ispython = False
+    ispython = True
     if len(script_arguments) >= 2:
         if 'verbose' in script_arguments[1:]:
             verbose = False
