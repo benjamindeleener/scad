@@ -107,10 +107,10 @@ class SCAD(Algorithm):
 
         # copy back centerline
         os.chdir('../')
-        sct.tmp_copy_nifti('centerline.nii.gz',self.input_image.path,self.input_image.file_name+'_centerline'+self.input_image.ext)
+        sct.tmp_copy_nifti(path_tmp + 'centerline.nii.gz',self.input_image.path,self.input_image.file_name+'_centerline'+self.input_image.ext)
 
         # delete tmp
-        os.removedirs(path_tmp)
+        sct.run('rm -rf ' + path_tmp)
         # symDetector = SymmetryDetector(self.contrast, self.verbose)
         # symDetector.execute()
         # SymmetryDetector()

@@ -68,7 +68,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                             list_images[file_name] = file_name_corr
 
             # running the proposed algorithm on images in the folder and analyzing the results
-            for image, image_manual_seg in list_images:
+            for image, image_manual_seg in list_images.items():
                 path_in, file_in, ext_in = sct.extract_fname(image)
                 image_output = file_in+'_centerline'+ext_in
                 if ispython:
@@ -110,13 +110,13 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                     print 'FAIL: Centerline is outside manual segmentation.'
 
                 # check the length of centerline compared to manual segmentation
-                import sct_process_segmentation as sct_seg
-                length_manseg = sct_seg.compute_length(image_manual_seg)
-                length_centerline = sct_seg.compute_length(image_output)
-                if length_manseg*0.9 <= length_centerline <= length_manseg*1.1:
-                    print 'OK: Length of centerline correspond to length of manual segmentation.'
-                else:
-                    print 'FAIL: Length of centerline does not correspond to length of manual segmentation.'
+                # import sct_process_segmentation as sct_seg
+                # length_manseg = sct_seg.compute_length(image_manual_seg)
+                # length_centerline = sct_seg.compute_length(image_output)
+                # if length_manseg*0.9 <= length_centerline <= length_manseg*1.1:
+                #     print 'OK: Length of centerline correspond to length of manual segmentation.'
+                # else:
+                #     print 'FAIL: Length of centerline does not correspond to length of manual segmentation.'
 
     # t2
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     algorithm = script_arguments[0]
     verbose = True
-    ispython = True
+    ispython = False
     if len(script_arguments) >= 2:
         if 'verbose' in script_arguments[1:]:
             verbose = False
