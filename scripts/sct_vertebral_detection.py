@@ -3,10 +3,10 @@ __author__ = 'taduv_admin'
 from msct_image import Image
 import numpy as np
 import sct_straighten_spinalcord
+import sct_utils as sct
 
 
-
-def vertebral_detection(fname, fname_centerline, verbose=0):
+def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbose=0):
 
     shift_AP = 14                                       # shift the centerline on the spine in mm default : 17 mm
     size_AP = 6                                         # mean around the centerline in the anterior-posterior direction in mm
@@ -32,7 +32,9 @@ def vertebral_detection(fname, fname_centerline, verbose=0):
     size_RL = size_RL*img.pixdim[0]
 
     # normal vector of the orthogonal plane to the centerline i.e tangent vector to the centerline
-    x, y, z, Tx, Ty, Tz = sct_straighten_spinalcord.smooth_centerline(fname_centerline)
+    path_centerline, file_centerline, ext_centerline = sct.extract_fname(fname_centerline)
+    sct.run('sct_orientation -i ' + fname_centerline + ' -s RPI')
+    x, y, z, Tx, Ty, Tz = sct_straighten_spinalcord.smooth_centerline(path_centerline + file_centerline + '_RPI' + ext_centerline)
 
     #build intensity profile along the centerline
     I = np.zeros((len(y),1))
@@ -393,5 +395,23 @@ def vertebral_detection(fname, fname_centerline, verbose=0):
     #centerline.change_orientation(raw_orientation)
     centerline.file_name+='_labeled'
     centerline.save()
+
+    if fname_segmentation:
+        seg=Image(fname_segmentation)
+        seg_raw_orientation = seg.change_orientation()
+        x_seg,y_seg,z_seg=np.where(seg.data)
+        for ivox in range(len(x_seg)):
+            vox_coord = np.array([x_seg[ivox], y_seg[ivox], z_seg[ivox]])
+            for iplane in range(len(locs)):
+                ind=np.where(z==locs[iplane])
+                vox_vector = vox_coord - np.hstack((x[ind],y[ind],z[ind]))
+                normal2plane_vector = np.hstack((Tx[ind], Ty[ind], Tz[ind]))
+                if np.dot(vox_vector, normal2plane_vector) > 0:
+                    seg.data[vox_coord[0], vox_coord[1], vox_coord[2]] = iplane+2
+                else:
+                    break
+        seg.change_orientation(seg_raw_orientation)
+        seg.file_name+='_labeled'
+        seg.save()
 
     return locs
