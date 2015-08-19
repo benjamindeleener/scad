@@ -1,9 +1,44 @@
-__author__ = 'taduv_admin'
+#!/usr/bin/env python
+# __author__ = 'taduv_admin'
 
+from msct_base_classes import BaseScript
 from msct_image import Image
 import numpy as np
 import sct_straighten_spinalcord
 import sct_utils as sct
+from msct_parser import Parser
+import sys
+
+
+class Script(BaseScript):
+    def __init__(self):
+        super(Script, self).__init__()
+
+    @staticmethod
+    def get_parser():
+        # Initialize the parser
+        parser = Parser(__file__)
+        parser.usage.set_description('''This program automatically detect the spinal cord in a MR image and output a centerline of the spinal cord.''')
+        parser.add_option(name="-i",
+                          type_value="file",
+                          description="input image.",
+                          mandatory=True,
+                          example="t2.nii.gz")
+        parser.add_option(name="-centerline",
+                          type_value="file",
+                          description="Binary image of the centerline",
+                          mandatory=True,
+                          example="centerline.nii.gz")
+        parser.add_option(name="-seg",
+                          type_value="file",
+                          description="input image.",
+                          mandatory=True,
+                          example="segmentation.nii.gz")
+        parser.add_option(name="-h",
+                          type_value=None,
+                          description="display this help",
+                          mandatory=False)
+        return parser
 
 
 def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbose=0):
@@ -396,6 +431,8 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     centerline.file_name+='_labeled'
     centerline.save()
 
+
+    # color the segmentation with vertebral number
     if fname_segmentation:
         seg=Image(fname_segmentation)
         seg_raw_orientation = seg.change_orientation()
@@ -406,12 +443,21 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
                 ind=np.where(z==locs[iplane])
                 vox_vector = vox_coord - np.hstack((x[ind],y[ind],z[ind]))
                 normal2plane_vector = np.hstack((Tx[ind], Ty[ind], Tz[ind]))
+
+                # if voxel is above the plane --> give the number of the plane
                 if np.dot(vox_vector, normal2plane_vector) > 0:
                     seg.data[vox_coord[0], vox_coord[1], vox_coord[2]] = iplane+2
-                else:
+
+                else: # if the voxel gets below the plane --> next voxel
                     break
         seg.change_orientation(seg_raw_orientation)
         seg.file_name+='_labeled'
         seg.save()
 
     return locs
+
+if __name__ == '__main__':
+    parser = Script.get_parser()
+    arguments = parser.parse(sys.argv[1:])
+
+    vertebral_detection(arguments["-i"],arguments["-centerline"],fname_segmentation=arguments["-seg"],verbose=1)
