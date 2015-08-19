@@ -69,6 +69,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
 
             # running the proposed algorithm on images in the folder and analyzing the results
             for image, image_manual_seg in list_images.items():
+                print image
                 path_in, file_in, ext_in = sct.extract_fname(image)
                 image_output = file_in+'_centerline'+ext_in
                 if ispython:
@@ -92,7 +93,9 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                 # analyzing the resulting centerline
                 from msct_image import Image
                 manual_segmentation_image = Image(image_manual_seg)
+                manual_segmentation_image.change_orientation()
                 centerline_image = Image(image_output)
+                centerline_image.change_orientation()
 
                 from msct_types import Coordinate
                 # coord_manseg = manual_segmentation_image.getNonZeroCoordinates()
@@ -103,11 +106,13 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                 for coord in coord_centerline:
                     if manual_segmentation_image.data[coord.x, coord.y, coord.z] == 0:
                         result_centerline_in = False
+                        print 'failed on slice #' + str(coord.z)
                         break
                 if result_centerline_in:
                     print 'OK: Centerline is inside manual segmentation.'
                 else:
                     print 'FAIL: Centerline is outside manual segmentation.'
+
 
                 # check the length of centerline compared to manual segmentation
                 # import sct_process_segmentation as sct_seg
@@ -117,6 +122,7 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
                 #     print 'OK: Length of centerline correspond to length of manual segmentation.'
                 # else:
                 #     print 'FAIL: Length of centerline does not correspond to length of manual segmentation.'
+            os.chdir('..')
 
     # t2
 

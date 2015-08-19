@@ -28,7 +28,7 @@ import nibabel
 import sct_utils as sct
 from msct_nurbs import NURBS
 from sct_orientation import get_orientation, set_orientation
-from sct_straighten_spinalcord import smooth_centerline
+
 
 
 # DEFAULT PARAMETERS

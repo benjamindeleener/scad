@@ -13,3 +13,7 @@
 
 # Can also ignore all directories and files in a directory.
 
+scripts/.idea/modules.xml
+scripts/.idea/scripts.iml
+scripts/.idea/workspace.xml
+scripts/.idea/scopes/scope_settings.xml

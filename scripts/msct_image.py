@@ -17,7 +17,7 @@ class Image(object):
 
     """
     def __init__(self, param=None, hdr=None, orientation=None, absolutepath="", verbose=1, split=False):
-        from numpy import zeros, ndarray, generic
+        from numpy import zeros, ndarray, generic, array
         from sct_utils import extract_fname
 
         # initialization of all parameters
@@ -29,7 +29,7 @@ class Image(object):
         self.file_name = ""
         self.ext = ""
         self.dim = None
-
+        self.pixdim = None
         self.verbose = verbose
 
         # load an image from file
@@ -101,6 +101,7 @@ class Image(object):
         self.path, self.file_name, self.ext = extract_fname(path)
         nx, ny, nz, nt, px, py, pz, pt = get_dimension(path)
         self.dim = [nx, ny, nz]
+        self.pixdim = [px, py, pz]
 
     def setFileName(self, filename):
         from sct_utils import extract_fname
