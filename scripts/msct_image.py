@@ -327,6 +327,7 @@ class Image(object):
         if self.orientation is None:
             from sct_orientation import get_orientation
             self.orientation = get_orientation(self.file_name)
+        raw_orientation = self.orientation
 
         if inversion_orient:
             temp_orientation = self.orientation
@@ -368,8 +369,10 @@ class Image(object):
             pass
         else:
             print 'Error: wrong orientation'
-
+        import numpy as np
+        self.dim = np.array(self.dim)[perm]
         self.orientation = orientation
+        return raw_orientation
 
     def show(self):
         from matplotlib.pyplot import imshow, show
