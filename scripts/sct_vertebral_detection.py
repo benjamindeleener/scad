@@ -34,6 +34,17 @@ class Script(BaseScript):
                           description="input image.",
                           mandatory=True,
                           example="segmentation.nii.gz")
+        parser.add_option(name="-v",
+                          type_value="multiple_choice",
+                          description="1: display on, 0: display off (default)",
+                          mandatory=False,
+                          example=["0", "1"],
+                          default_value="1")
+        parser.add_option(name="-t",
+                          type_value="multiple_choice",
+                          description="Image Contrast",
+                          mandatory=True,
+                          example=["T1", "T2"])
         parser.add_option(name="-h",
                           type_value=None,
                           description="display this help",
@@ -41,11 +52,11 @@ class Script(BaseScript):
         return parser
 
 
-def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbose=0):
+def vertebral_detection(fname, fname_centerline, fname_segmentation=None, contrast='T1', verbose=0):
 
     shift_AP = 14                                       # shift the centerline on the spine in mm default : 17 mm
-    size_AP = 6                                         # mean around the centerline in the anterior-posterior direction in mm
-    size_RL = 5                                         # mean around the centerline in the right-left direction in mm
+    size_AP = 3                                         # mean around the centerline in the anterior-posterior direction in mm
+    size_RL = 3                                         # mean around the centerline in the right-left direction in mm
 
 
     if verbose:
@@ -117,194 +128,80 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     # low pass filtering
     import scipy.signal
     frequency = 2/img.pixdim[2]
-    Wn = 0.02/frequency
+    Wn = 0.1/frequency
     N = 2              #Order of the filter
     #    b, a = scipy.signal.butter(N, Wn, btype='low', analog=False, output='ba')
     b, a = scipy.signal.iirfilter(N, Wn, rp=None, rs=None, btype='high', analog=False, ftype='bessel', output='ba')
     I_detrend = scipy.signal.filtfilt(b, a, I[:,0], axis=-1, padtype='constant', padlen=None)
     I_detrend = I_detrend/(np.amax(I_detrend))
-    I_detrend2= np.diff(I_detrend)
-
 
 
     #==================================================
     # step 1 : Find the First Peak
     #==================================================
-    #locs=scipy.signal.find_peaks_cwt(np.squeeze(I_detrend2),np.arange(1,I_detrend2.size),gap_thresh=0.1)
+    if contrast == 'T1':
+        I_detrend2= np.diff(I_detrend)
+    elif contrast == 'T2':
+        space = np.linspace(-10/img.pixdim[2], 10/img.pixdim[2], round(21/img.pixdim[2]), endpoint=True)
+        pattern = (np.sinc((space*img.pixdim[2])/20))**(20)
+        I_corr = scipy.signal.correlate(-I_detrend.squeeze().squeeze()+1,pattern,'same')
+        b, a = scipy.signal.iirfilter(N, Wn, rp=None, rs=None, btype='high', analog=False, ftype='bessel', output='ba')
+        I_detrend2 = scipy.signal.filtfilt(b, a, I_corr, axis=-1, padtype='constant', padlen=None)
+
     I_detrend2[I_detrend2<0.2]=0
-    locs=np.squeeze(scipy.signal.argrelextrema(I_detrend2,np.greater))
+    ind_locs=np.squeeze(scipy.signal.argrelextrema(I_detrend2,np.greater))
+
 
 
     # remove peaks that are too closed
-    locsdiff=np.diff(locs)
+    locsdiff=np.diff(z[ind_locs])
     ind=locsdiff>10
-    locs = np.hstack((locs[ind],locs[-1]))
+    ind_locs = np.hstack((ind_locs[ind],ind_locs[-1]))
+    locs=z[ind_locs]
 
     if verbose:
         plt.figure()
         plt.plot(I_detrend2)
-        plt.plot(locs,I_detrend2[locs],'+')
-
-    # mean_distance_dict = scipy.io.loadmat('/home/django/kraju/code/spinalcordtoolbox_dev/src/vertebral_labeling/mean_distance.mat')
-    # mean_distance = (mean_distance_dict.values()[2]).T
-    # C1C2_distance = mean_distance[0:2]
-    # mean_distance = mean_distance[level_start-1:len(mean_distance)-1]
-    #
-    # space = np.linspace(-5/scales[2], 5/scales[2], round(11/scales[2]), endpoint=True)
-    # pattern = (np.sinc((space*scales[2])/15))**(20)
-    # xmax_pattern = np.argmax(pattern)
+        plt.plot(ind_locs,I_detrend2[ind_locs],'+')
 
 
-    #correlation between the pattern and intensity profile
-    #corr_all = scipy.signal.correlate(pattern,I_detrend[:,0])
-    #corr_all = matplotlib.pyplot.xcorr(pattern,I_detrend[:,0])
 
-    # pattern1 =  np.concatenate((pattern,np.zeros(len(I_detrend[:,0])-len(pattern))))
-    # corr_all = scipy.signal.correlate(I_detrend[:,0],pattern1)
-    # loc_corr = np.arange(-np.round((len(corr_all)/2)),np.round(len(corr_all)/2)+2)
-    # index_fp = 0
-    # count = 0
-    # for i in range(len(corr_all)):
-    #     if corr_all[i]>0.1:
-    #         if i==0:
-    #             if corr_all[i]<corr_all[i+1]:
-    #                 index_fp = i
-    #                 count = count + 1
-    #         elif i==(len(corr_all)-1):
-    #             if corr_all[i]<corr_all[i-1]:
-    #                 index_fp = np.resize(index_fp,count+1)
-    #                 index_fp[len(index_fp)-1] = i
-    #         else:
-    #             if corr_all[i]<corr_all[i+1]:
-    #                 index_fp = np.resize(index_fp,count+1)
-    #                 index_fp[len(index_fp)-1] = i
-    #                 count = count + 1
-    #             elif corr_all[i]<corr_all[i-1]:
-    #                 index_fp = np.resize(index_fp,count+1)
-    #                 index_fp[len(index_fp)-1] = i
-    #                 count = count + 1
-    #     else:
-    #         if i==0:
-    #             index_fp = i
-    #             count = count + 1
-    #         else:
-    #             index_fp = np.resize(index_fp,count+1)
-    #             index_fp[len(index_fp)-1] = i
-    #             count = count + 1
+    #=====================================================================================
+    # step 2 : Cross correlation between the adjusted template and the intensity profile.
+    #          Local moving of template's peak from the first peak already found
+    #=====================================================================================
+
+    #For each loop, a peak is located at the most likely postion and then local adjustement is done.
+    #The position of the next peak is calculated from previous positions
+
+    sct.printv('\nFinding Cross correlation between the adjusted template and the intensity profile...',verbose)
+
+    mean_distance = [12.1600, 20.8300, 18.0000, 16.0000, 15.1667, 15.3333, 15.8333,   18.1667,   18.6667,   18.6667,
+    19.8333,   20.6667,   21.6667,   22.3333,   23.8333,   24.1667,   26.0000,   28.6667,   30.5000,   33.5000,
+    33.0000,   31.3330]
     #
+    # #Creating pattern
+    space = np.linspace(-10/img.pixdim[2], 10/img.pixdim[2], round(21/img.pixdim[2]), endpoint=True)
+    pattern = (np.sinc((space*img.pixdim[2])/20))**(20)
+    I_corr = scipy.signal.correlate(I_detrend2.squeeze().squeeze()+1,pattern,'same')
     #
-    # mask_fp = np.ones(len(corr_all), dtype=bool)
-    # mask_fp[index_fp] = False
-    # value = corr_all[mask_fp]
-    # loc_corr = loc_corr[mask_fp]
-    #
-    # loc_corr = loc_corr - I_detrend.shape[0]
-    # loc_first_peak = xmax_pattern - loc_corr[np.amax(np.where(value>1))]
-    # Mcorr1 = value[np.amax(np.where(value>1))]
-    #
-    # #building the pattern that has to be added at each iteration in step 2
-    #
-    # if xmax_pattern<loc_first_peak:
-    #     template_truncated = np.concatenate((np.zeros((loc_first_peak-xmax_pattern)),pattern))
-    #
+    # level_start=1
+    # if contrast == 'T1':
+    #     mean_distance = mean_distance[level_start-1:len(mean_distance)]
+    #     xmax_pattern = np.argmax(pattern)
     # else:
-    #     template_truncated = pattern[(xmax_pattern-loc_first_peak-1):]
-    # xend = np.amax(np.where(template_truncated>0.02))
-    # pixend = xend - loc_first_peak
+    #     mean_distance = mean_distance[level_start+1:len(mean_distance)]
+    #     xmax_pattern = np.argmin(pattern)          # position of the peak in the pattern
+    # pixend = len(pattern) - xmax_pattern       #number of pixel after the peaks in the pattern
     #
-    # if label.verbose==1:
-    #     pl.plot(template_truncated)
-    #     pl.plot(I_detrend)
-    #     pl.title('Detection of First Peak')
-    #     pl.xlabel('direction anterior-posterior (mm)')
-    #     pl.ylabel('intensity')
-    #     pl.show()
-    #
-    # loc_peak_I = np.arange(len(I_detrend[:,0]))
-    # count = 0
-    # index_p = 0
-    # for i in range(len(I_detrend[:,0])):
-    #     if I_detrend[i]>0.15:
-    #         if i==0:
-    #             if I_detrend[i,0]<I_detrend[i+1,0]:
-    #                 index_p = i
-    #                 count  =  count + 1
-    #         elif i==(len(I_detrend[:,0])-1):
-    #             if I_detrend[i,0]<I_detrend[i-1,0]:
-    #                 index_p = np.resize(index_p,count+1)
-    #                 index_p[len(index_p)-1] = i
-    #         else:
-    #             if I_detrend[i,0]<I_detrend[i+1,0]:
-    #                 index_p = np.resize(index_p,count+1)
-    #                 index_p[len(index_p)-1] = i
-    #                 count = count+1
-    #             elif I_detrend[i,0]<I_detrend[i-1,0]:
-    #                 index_p = np.resize(index_p,count+1)
-    #                 index_p[len(index_p)-1] = i
-    #                 count = count+1
-    #     else:
-    #         if i==0:
-    #             index_p = i
-    #             count  =  count + 1
-    #         else:
-    #             index_p = np.resize(index_p,count+1)
-    #             index_p[len(index_p)-1] = i
-    #             count = count+1
-    #
-    # mask_p = np.ones(len(I_detrend[:,0]), dtype=bool)
-    # mask_p[index_p] = False
-    # value_I = I_detrend[mask_p]
-    # loc_peak_I = loc_peak_I[mask_p]
-    #
-    # count = 0
-    # for i in range(len(loc_peak_I)-1):
-    #     if i==0:
-    #         if loc_peak_I[i+1]-loc_peak_I[i]<round(10/scales[1]):
-    #             index = i
-    #             count = count + 1
-    #     else:
-    #         if (loc_peak_I[i+1]-loc_peak_I[i])<round(10/scales[1]):
-    #             index =  np.resize(index,count+1)
-    #             index[len(index)-1] = i
-    #             count = count + 1
-    #         elif (loc_peak_I[i]-loc_peak_I[i-1])<round(10/scales[1]):
-    #             index =  np.resize(index,count+1)
-    #             index[len(index)-1] = i
-    #             count = count + 1
-    #
-    # mask_I = np.ones(len(value_I), dtype=bool)
-    # mask_I[index] = False
-    # value_I = value_I[mask_I]
-    # loc_peak_I = loc_peak_I[mask_I]
-    #
-    # from scipy.interpolate import UnivariateSpline
-    # fit = UnivariateSpline(loc_peak_I,value_I)
-    # P = fit(np.arange(len(I_detrend)))
-    #
-    # for i in range(len(I_detrend)):
-    #     if P[i]>0.1:
-    #         I_detrend[i,0] = I_detrend[i,0]/P[i]
-    #
-    # if label.verbose==1:
-    #     pl.xlim(0,len(I_detrend)-1)
-    #     pl.plot(loc_peak_I,value_I)
-    #     pl.plot(I_detrend)
-    #     pl.plot(P,color='y')
-    #     pl.title('Setting values of peaks at one by fitting a smoothing spline')
-    #     pl.xlabel('direction superior-inferior (mm)')
-    #     pl.ylabel('normalized intensity')
-    #     pl.show(block=False)
-    #
-    # #===================================================================================
-    # # step 2 : Cross correlation between the adjusted template and the intensity profile
-    # #          local moving of template's peak from the first peak already found
-    # #===================================================================================
     #
     # mean_distance_new = mean_distance
     # mean_ratio = np.zeros(len(mean_distance))
-    # L = np.round(1.2*max(mean_distance)) - np.round(0.8*min(mean_distance))
-    # corr_peak  = np.zeros((L,len(mean_distance)))
     #
+    # L = np.round(1.2*max(mean_distance)) - np.round(0.8*min(mean_distance))
+    # corr_peak  = np.zeros((L,len(mean_distance)))          # corr_peak  = np.nan #for T2
+    #
+    # #loop on each peak
     # for i_peak in range(len(mean_distance)):
     #     scale_min = np.round(0.80*mean_distance_new[i_peak]) - xmax_pattern - pixend
     #     if scale_min<0:
@@ -317,6 +214,8 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     #         template_resize_peak = np.concatenate([template_truncated,np.zeros(scale_peak[i_scale]),pattern])
     #         if len(I_detrend[:,0])>len(template_resize_peak):
     #             template_resize_peak1 = np.concatenate((template_resize_peak,np.zeros(len(I_detrend[:,0])-len(template_resize_peak))))
+    #
+    #         #cross correlation
     #         corr_template = scipy.signal.correlate(I_detrend[:,0],template_resize_peak)
     #
     #         if len(I_detrend[:,0])>len(template_resize_peak):
@@ -326,15 +225,15 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     #             val = np.dot(I_detrend_2,template_resize_peak.T)
     #         corr_peak[i_scale,i_peak] = val
     #
-    #         if label.verbose==1:
-    #             pl.xlim(0,len(I_detrend[:,0]))
-    #             pl.plot(I_detrend[:,0])
-    #             pl.plot(template_resize_peak)
-    #             pl.show(block=False)
+    #         if verbose:
+    #             plt.xlim(0,len(I_detrend[:,0]))
+    #             plt.plot(I_detrend[:,0])
+    #             plt.plot(template_resize_peak)
+    #             plt.show(block=False)
     #
-    #             pl.plot(corr_peak[:,i_peak],marker='+',linestyle='None',color='r')
-    #             pl.title('correlation value against the displacement of the peak (px)')
-    #             pl.show(block=False)
+    #             plt.plot(corr_peak[:,i_peak],marker='+',linestyle='None',color='r')
+    #             plt.title('correlation value against the displacement of the peak (px)')
+    #             plt.show(block=False)
     #
     #     max_peak = np.amax(corr_peak[:,i_peak])
     #     index_scale_peak = np.where(corr_peak[:,i_peak]==max_peak)
@@ -344,6 +243,7 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     #     Mcorr[i_peak+1] = np.amax(corr_peak[:,0:(i_peak+1)])
     #     flag = 0
     #
+    #     #If the correlation coefficient is too low, put the peak at the mean position
     #     if i_peak>0:
     #         if (Mcorr[i_peak+1]-Mcorr[i_peak])<0.4*np.mean(Mcorr[1:i_peak+2]-Mcorr[0:i_peak+1]):
     #             test = i_peak
@@ -358,48 +258,37 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     #     if flag==0:
     #         template_resize_peak=np.concatenate((template_truncated,np.zeros(good_scale_peak),pattern))
     #
+    #     #update mean-distance by a adjustement ratio
     #     mean_distance_new[i_peak] = good_scale_peak + xmax_pattern + pixend
     #     mean_ratio[i_peak] = np.mean(mean_distance_new[:,0:i_peak]/mean_distance[:,0:i_peak])
     #
     #     template_truncated = template_resize_peak
     #
-    #     if label.verbose==1:
-    #         pl.plot(I_detrend[:,0])
-    #         pl.plot(template_truncated)
-    #         pl.xlim(0,(len(I_detrend[:,0])-1))
-    #         pl.show()
+    #     if verbose:
+    #         plt.plot(I_detrend[:,0])
+    #         plt.plot(template_truncated)
+    #         plt.xlim(0,(len(I_detrend[:,0])-1))
+    #         plt.show()
     #
+    # #finding the maxima of the adjusted template
     # minpeakvalue = 0.5
     # loc_disk = np.arange(len(template_truncated))
-    # count = 0
-    # index_disk = 0
+    # index_disk = []
     # for i in range(len(template_truncated)):
     #     if template_truncated[i]>=minpeakvalue:
     #         if i==0:
     #             if template_truncated[i]<template_truncated[i+1]:
-    #                 index_disk = i
-    #                 count  =  count + 1
+    #                 index_disk.append(i)
     #         elif i==(len(template_truncated)-1):
     #             if template_truncated[i]<template_truncated[i-1]:
-    #                 index_disk = np.resize(index_disk,count+1)
-    #                 index_disk[len(index_disk)-1] = i
+    #                 index_disk.append(i)
     #         else:
     #             if template_truncated[i]<template_truncated[i+1]:
-    #                 index_disk = np.resize(index_disk,count+1)
-    #                 index_disk[len(index_disk)-1] = i
-    #                 count = count+1
+    #                 index_disk.append(i)
     #             elif template_truncated[i]<template_truncated[i-1]:
-    #                 index_disk = np.resize(index_disk,count+1)
-    #                 index_disk[len(index_disk)-1] = i
-    #                 count = count+1
+    #                 index_disk.append(i)
     #     else:
-    #         if i==0:
-    #             index_disk = i
-    #             count  =  count + 1
-    #         else:
-    #             index_disk = np.resize(index_disk,count+1)
-    #             index_disk[len(index_disk)-1] = i
-    #             count = count+1
+    #         index_disk.append(i)
     #
     # mask_disk = np.ones(len(template_truncated), dtype=bool)
     # mask_disk[index_disk] = False
@@ -422,7 +311,7 @@ def vertebral_detection(fname, fname_centerline, fname_segmentation=None, verbos
     for iz in range(locs[0]):
             centerline.data[np.round(x[iz]),np.round(y[iz]),iz]=1
     for i in range(len(locs)-1):
-        for iz in range(locs[i],locs[i+1]):
+        for iz in range(locs[i],min(locs[i+1],len(z))):
             centerline.data[np.round(x[iz]),np.round(y[iz]),iz]=i+2
     for iz in range(locs[-1],len(z)):
             centerline.data[np.round(x[iz]),np.round(y[iz]),iz]=i+3
@@ -460,4 +349,4 @@ if __name__ == '__main__':
     parser = Script.get_parser()
     arguments = parser.parse(sys.argv[1:])
 
-    vertebral_detection(arguments["-i"],arguments["-centerline"],fname_segmentation=arguments["-seg"],verbose=1)
+    vertebral_detection(arguments["-i"],arguments["-centerline"],fname_segmentation=arguments["-seg"],contrast=arguments["-t"], verbose=1)
