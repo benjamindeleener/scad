@@ -8,8 +8,8 @@ for iz=1:img.dims(3)
     slice=img.img(:,:,iz,1);
     slice=imgaussian(slice,3/mean(img.scales(1:2))); % smooth (3mm) for higher robustness in maxium 
     [~,I]=max(slice(:));
-    [X,Y]=ind2sub(img.dims(1:2),I);
-    centerline(X,Y,iz)=true;
+    [X(iz),Y(iz)]=ind2sub(img.dims(1:2),I);
+    centerline(X(iz),Y(iz),iz)=true;
 end
 
 %% todo : z regulation
