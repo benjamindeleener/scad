@@ -42,8 +42,10 @@ for row=2:p
     VI=repmat(cP(indexx,indexy),[1,1,5]);
     VIm=repmat(cPm(indexx,indexy),[1,1,5]);
 %     VI=Ip;
-    VI(:,:,1:2)=VI(:,:,1:2).*factx; VIm(:,:,1:2)=VIm(:,:,1:2).*factx;
-    VI(:,:,4:5)=VI(:,:,4:5).*factx; VIm(:,:,4:5)=VIm(:,:,4:5).*factx;
+    VI(:,:,1:2)=VI(:,:,1:2).*factx;
+    VIm(:,:,1:2)=VIm(:,:,1:2).*factx;
+    VI(:,:,4:5)=VI(:,:,4:5).*factx; 
+    VIm(:,:,4:5)=VIm(:,:,4:5).*factx;
     Jq=cat(3,pJ(indexx-1,indexy),pJ(indexx,indexy-1),pJ(indexx,indexy),pJ(indexx,indexy+1),pJ(indexx+1,indexy));
     if homogeneousmod
         J1(2:end-1,2:end-1,row)=min(Jq+abs(VI-VIm)./min(VI,VIm).^2,[],3);

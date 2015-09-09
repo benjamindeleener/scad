@@ -371,7 +371,7 @@ class Image(object):
         else:
             print 'Error: wrong orientation'
         import numpy as np
-        self.dim = np.array(self.dim)[perm]
+        self.dim = self.data.shape
         self.orientation = orientation
         return raw_orientation
 

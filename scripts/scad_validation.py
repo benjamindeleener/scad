@@ -35,6 +35,11 @@
 
 import sys
 import os
+import nibabel as nib
+from msct_image import Image
+from scad import SCAD
+import numpy as np
+import scad
 
 def scadMRValidation(algorithm, isPython=False, verbose=True):
     if not isinstance(algorithm, str) or not algorithm:
@@ -132,6 +137,72 @@ def scadMRValidation(algorithm, isPython=False, verbose=True):
 
     # gre
 
+def validate_scad(folder_input):
+    """
+    Expecting folder to have the following structure :
+    errsm_01:
+    - t2
+    -- errsm_01.nii.gz or t2.nii.gz
+    :param folder_input:
+    :return:
+    """
+    current_folder = os.getcwd()
+    os.chdir(folder_input)
+    try:
+        patients = next(os.walk('.'))[1]
+        for i in patients:
+            if i != "errsm_01" and i !="errsm_02":
+                directory = i + "/t2"
+                os.chdir(directory)
+                try:
+                    if os.path.isfile(i+"_t2.nii.gz"):
+                        raw_image = Image(i+"_t2.nii.gz")
+                    elif os.path.isfile("t2.nii.gz"):
+                        raw_image = Image("t2.nii.gz")
+                    else:
+                        raise Exception("t2.nii.gz or "+i+"_t2.nii.gz file is not found")
+
+                    raw_orientation = raw_image.change_orientation()
+                    SCAD(raw_image, contrast="t2", rm_tmp_file=1, verbose=1).test_debug()
+
+                    manual_seg = Image(i+"_t2_manual_segmentation.nii.gz")
+                    manual_orientation = manual_seg.change_orientation()
+
+                    from scipy.ndimage.measurements import center_of_mass
+                    # find COM
+                    iterator = range(manual_seg.data.shape[2])
+                    com_x = [0 for ix in iterator]
+                    com_y = [0 for iy in iterator]
+
+                    for iz in iterator:
+                        com_x[iz], com_y[iz] = center_of_mass(manual_seg.data[:, :, iz])
+                    #raw_image.change_orientation(raw_orientation)
+                    #manual_seg.change_orientation(manual_orientation)
+
+                    centerline_scad = Image(i+"_t2_centerline.nii.gz")
+                    os.remove(i+"_t2_centerline.nii.gz")
+
+                    centerline_scad.change_orientation()
+                    distance = []
+                    for iz in range(centerline_scad.data.shape[2]):
+                        ind1 = np.argmax(centerline_scad.data[:, :, iz])
+                        X,Y = scad.ind2sub(centerline_scad.data[:, :, i].shape,ind1)
+                        com_phys = centerline_scad.transfo_pix2phys([[com_x[iz], com_y[iz], iz]])
+                        scad_phys = centerline_scad.transfo_pix2phys([[X, Y, iz]])
+                        distance_magnitude = np.linalg.norm(com_phys-scad_phys)
+                        distance.append(distance_magnitude)
+
+
+
+                    os.chdir(folder_input)
+
+                except Exception, e:
+                    print e.message
+                pass
+    except Exception, e:
+        print e.message
+
+
 
 def usage():
     print """
@@ -162,18 +233,24 @@ if __name__ == "__main__":
     script_arguments = sys.argv[1:]
     if "-h" in script_arguments:
         usage()
-    elif len(script_arguments) > 3:
-        print 'ERROR: this script only accepts three arguments: the name of your algorithm, if it is a python script or' \
-              'not and the verbose option.'
-        usage()
 
-    algorithm = script_arguments[0]
-    verbose = True
-    ispython = False
-    if len(script_arguments) >= 2:
-        if 'verbose' in script_arguments[1:]:
-            verbose = False
-        if 'ispython' in script_arguments[1:]:
-            ispython = True
-
-    scadMRValidation(algorithm=algorithm, isPython=ispython, verbose=verbose)
+    ### Start of not good code
+    if "-scad" in script_arguments:
+        folder = script_arguments[script_arguments.index("-i") + 1]
+        if folder != "" or folder is not None:
+            validate_scad(folder)
+    # elif len(script_arguments) > 3:
+    #     print 'ERROR: this script only accepts three arguments: the name of your algorithm, if it is a python script or' \
+    #           'not and the verbose option.'
+    #     usage()
+    #
+    # algorithm = script_arguments[0]
+    # verbose = True
+    # ispython = False
+    # if len(script_arguments) >= 2:
+    #     if 'verbose' in script_arguments[1:]:
+    #         verbose = False
+    #     if 'ispython' in script_arguments[1:]:
+    #         ispython = True
+    #
+    # scadMRValidation(algorithm=algorithm, isPython=ispython, verbose=verbose)
